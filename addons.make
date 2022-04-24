@@ -1,0 +1,3 @@
+ofxComponent
+ofxGui
+ofxTextFlow
