@@ -1,5 +1,7 @@
+#pragma once
 #include "ofxComponent.h"
 #include "LensElement.h"
+#include "LightPoint.h"
 
 using namespace ofxComponent;
 
@@ -13,4 +15,6 @@ public:
     void onDraw() override;
 
     vector<LensElement> lensElements;
+    vector<LightPoint> lightPoints;
+    void simulate();
 };

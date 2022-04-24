@@ -4,3 +4,8 @@ obj/
 *.sln
 *.vcxproj*
 .vscode
+
+# XCode
+*.xcodeproj
+*.xcconfig
+*.plist
