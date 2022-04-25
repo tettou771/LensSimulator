@@ -5,6 +5,11 @@
 
 using namespace ofxComponent;
 
+struct LensUnit {
+    vector<LensElement> elements;
+    double score = 0;
+};
+
 class LensSimulator : public ofxComponentBase {
 public:
     LensSimulator();
@@ -13,8 +18,12 @@ public:
     void onStart() override;
     void onUpdate() override;
     void onDraw() override;
+    void onKeyPressed(ofKeyEventArgs& key) override;
 
-    vector<LensElement> lensElements;
     vector<LightPoint> lightPoints;
-    void simulate();
+    double randomness;
+    LensUnit makeRandomLens(const LensUnit &reference, double rand);
+    void simulate(LensUnit &lensUnit);
+    
+    LensUnit topScoreUnit;
 };

@@ -28,5 +28,5 @@ public:
 
     bool isInsideLens(double y);
     double getX(double y, bool isFront); // relative position
-    void drawSurface2D();
+    void draw2D();
 };

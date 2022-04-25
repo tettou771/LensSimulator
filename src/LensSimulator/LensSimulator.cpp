@@ -8,39 +8,45 @@ void LensSimulator::onStart() {
     setHeight(500);
 
     // set a lens
+    topScoreUnit.elements.push_back(LensElement());
+    auto &l = topScoreUnit.elements.back();
+
+    
     /*
-     // spherical lens
-    lensElements.push_back(LensElement());
-    auto &l = lensElements.back();
+    // spherical lens
     l.position = 62;
     l.diametor = 40;
     l.front.r = 60;
     l.front.offset = 5;
     l.back.r = -60;
     l.back.offset = -5;
-    l.n = 1.492659; // acryl
-    l.abbe = 57.98; // acryl
 */
-    
     // non spherical lens
-    lensElements.push_back(LensElement());
-    auto &l = lensElements.back();
-    l.position = 62;
+    l.position = 60;
     l.diametor = 40;
     l.front.isSpherical = false;
     l.front.offset = 7;
-    l.front.a.push_back(-0.017);
+    l.front.a.push_back(-0.015);
+    l.front.a.push_back(0.0);
+    l.front.a.push_back(0.0);
     l.back.isSpherical = false;
     l.back.offset = -7;
-    l.back.a.push_back(0.017);
+    l.back.a.push_back(0.015);
+    l.back.a.push_back(0.0);
+    l.back.a.push_back(0.0);
+ 
     l.n = 1.492659; // acryl
     l.abbe = 57.98; // acryl
 
     // set light point
-    lightPoints.push_back(LightPoint(0));
+    lightPoints.push_back(LightPoint(0, 0));
+    lightPoints.push_back(LightPoint(0.17, 10));
+    lightPoints.push_back(LightPoint(0.3, 20));
     
     // exec
-    simulate();
+    simulate(topScoreUnit);
+    
+    randomness = 1;
 }
 
 void LensSimulator::onUpdate() {
@@ -56,7 +62,7 @@ void LensSimulator::onDraw() {
     ofPushMatrix();
 
     // sensor pos
-    ofVec2f sensorPos = ofVec2f(100, getHeight() / 2 + 0.5);
+    ofVec2f sensorPos = ofVec2f(200, getHeight() / 2 + 0.5);
     ofTranslate(sensorPos);
     
     // scaling
@@ -69,19 +75,86 @@ void LensSimulator::onDraw() {
 
     // lensElements
     ofSetColor(200);
-    for (auto &lens : lensElements) {
-        lens.drawSurface2D();
+    for (auto &lens : topScoreUnit.elements) {
+        lens.draw2D();
     }
     
     // lightPoints
     for (auto &light : lightPoints) {
-        light.draw();
+        light.draw2D();
     }
-
+    
+    // spot
+    ofTranslate(-10, 0);
+    for (auto &light : lightPoints) {
+        light.drawScreenSpot();
+    }
     ofPopMatrix();
+    
+    // score
+    stringstream ss;
+    ss << "score " << topScoreUnit.score << endl;
+    for (auto &lp : lightPoints) {
+        ss << "average " << lp.average << endl;
+        ss << "sigma " << lp.sigma << endl;
+    }
+    ofDrawBitmapString(ss.str(), 20, 20);
 }
 
-void LensSimulator::simulate() {
+void LensSimulator::onKeyPressed(ofKeyEventArgs& key) {
+    if (key.key == ' ') {
+        int testNum = 500;
+        auto currentTopUnit = topScoreUnit;
+        for (int i=0; i<testNum; ++i) {
+            auto testUnit = makeRandomLens(topScoreUnit, randomness);
+            simulate(testUnit);
+            if (testUnit.score > currentTopUnit.score || isnan(currentTopUnit.score)) {
+                currentTopUnit = testUnit;
+            }
+        }
+        topScoreUnit = currentTopUnit;
+        simulate(topScoreUnit);
+        randomness *= 0.5;
+    }
+}
+
+LensUnit LensSimulator::makeRandomLens(const LensUnit &reference, double rand) {
+    // copy
+    LensUnit randomUnit;
+    randomUnit = topScoreUnit;
+
+    auto &l = randomUnit.elements[0];
+    l.position += ofRandom(-10, 10) * rand;
+    
+    l.front.offset += ofRandom(-1, 1) * rand;
+    l.back.offset += ofRandom(-1, 1) * rand;
+
+    l.front.r += ofRandom(-6, 6) * rand;
+    l.back.r += ofRandom(-6, 6) * rand;
+    
+
+    /*
+    for (auto &curve : {l.front, l.back}) {
+        for (auto &aParam : curve.a) {
+            aParam += ofRandom(-0.1, 0.1) * rand;
+        }
+    }
+     */
+    
+    l.front.a[0] += ofRandom(-0.1, 0.1) * rand;
+    l.front.a[1] += ofRandom(-0.1, 0.1) * rand;
+    l.front.a[2] += ofRandom(-0.1, 0.1) * rand;
+    l.back.a[0] += ofRandom(-0.1, 0.1) * rand;
+    l.back.a[1] += ofRandom(-0.1, 0.1) * rand;
+    l.back.a[2] += ofRandom(-0.1, 0.1) * rand;
+
+    return randomUnit;
+}
+
+void LensSimulator::simulate(LensUnit &lensUnit) {
+    lensUnit.score = 0;
+    auto &lensElements = lensUnit.elements;
+    
     if (lensElements.empty()) {
         ofLogError() << "lens elements is empty";
         return;
@@ -95,7 +168,7 @@ void LensSimulator::simulate() {
     double lightStartPos = 100;
     for (auto &light : lightPoints) {
         light.clear();
-        light.setStart(100, 30);
+        light.setStart(lightStartPos, 50);
         
         // exec simulation
         for (auto &line : light.lines) {
@@ -147,7 +220,7 @@ void LensSimulator::simulate() {
                                 }
                                 double inAngle = glm::angle(normal, dir);
                                 double outAngle = asin(nd * sin(inAngle));
-                                cout << outAngle << endl;
+                                
                                 // no angle, same direction
                                 if (inAngle == 0) {
                                     dir = normal;
@@ -189,5 +262,20 @@ void LensSimulator::simulate() {
                 }
             }
         }
+        
+        light.calcStatistics();
+        
     }
+    
+    // evaluation
+    double posFactor = 0;
+    double sigmaFactor = 0;
+    for (auto light : lightPoints) {
+        double pos = sqrt(light.average.y * light.average.y + light.average.z * light.average.z);
+        posFactor += abs(pos - abs(light.target));
+        sigmaFactor += light.sigma;
+    }
+    posFactor /= lightPoints.size();
+    sigmaFactor /= lightPoints.size();
+    lensUnit.score = MIN(1./sigmaFactor, 1./ posFactor) + 1. / sigmaFactor;
 }

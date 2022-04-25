@@ -97,7 +97,7 @@ double LensElement::getX(double h, bool isFront) {
     else return back.getX(h);
 }
 
-void LensElement::drawSurface2D() {
+void LensElement::draw2D() {
     ofPushMatrix();
     ofTranslate(position, 0);
     

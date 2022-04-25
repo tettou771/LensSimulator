@@ -23,19 +23,38 @@ void LightLine::draw() {
 //    }
 }
 
-LightPoint::LightPoint(double _angle):
-angle(_angle) {
+LightPoint::LightPoint(double _angle, double _target):
+angle(_angle), target(_target) {
     clear();
 }
 
 void LightPoint::draw() {
-    ofPushMatrix();
-    
     for (auto &line : lines) {
         line.draw();
     }
+}
+
+void LightPoint::draw2D() {
+    for (auto &line : lines) {
+        if (!line.p.empty() && line.p[0].z == 0) {
+            line.draw();
+        }
+    }
+}
+
+void LightPoint::drawScreenSpot() {
+    ofSetColor(200);
     
-    ofPopMatrix();
+    ofMesh screenSpots;
+    screenSpots.setMode(OF_PRIMITIVE_POINTS);
+    for (auto &line : lines) {
+        if (!line.isValid) continue;
+        ofVec3f sp;
+        sp.x = line.screenPos.z;
+        sp.y = line.screenPos.y;
+        screenSpots.addVertex(sp);
+    }
+    screenSpots.draw();
 }
 
 void LightPoint::clear() {
@@ -53,12 +72,12 @@ void LightPoint::setStart(double _pos, double _height) {
     
     lines.clear();
     
-    int resolution = 21;
+    int resolution = 13;
     double x = _pos;
     for (int i=0; i<resolution; ++i) {
         double y = startHeight * (2. * i / (resolution - 1) - 1);
         
-        bool is2Dsimulation = true;
+        bool is2Dsimulation = false;
         if (is2Dsimulation) {
             double z = 0;
             f64vec3 firstPos(x, y, z);
@@ -96,6 +115,9 @@ void LightPoint::calcStatistics() {
     if (count > 0) {
         sigma = sqrt(sigma) / count;
     }
+    
+    ofLog() << "ave: " << average;
+    ofLog() << "sigma: " << sigma;
     
     simulated = true;
 }

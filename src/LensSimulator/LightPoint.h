@@ -16,9 +16,11 @@ public:
 
 class LightPoint {
 public:
-    LightPoint(double _angle);
+    LightPoint(double _angle, double _target);
     
     void draw();
+    void draw2D();
+    void drawScreenSpot();
     void clear();
     void setStart(double _pos, double _height);
     void calcStatistics();
@@ -29,6 +31,7 @@ public:
     bool simulated;
     double sigma;
     f64vec3 average;
+    double target;
     
     double startPos;
     double startHeight;

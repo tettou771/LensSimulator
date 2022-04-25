@@ -11,6 +11,7 @@ void ofApp::setup(){
     
     ofSetBackgroundAuto(true);
     ofSetBackgroundColor(0);
+    ofLogToConsole();
 }
 
 //--------------------------------------------------------------
