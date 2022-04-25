@@ -56,7 +56,7 @@ void LensSimulator::onDraw() {
     ofPushMatrix();
 
     // sensor pos
-    ofVec2f sensorPos = ofVec2f(100, getHeight() / 2);
+    ofVec2f sensorPos = ofVec2f(100, getHeight() / 2 + 0.5);
     ofTranslate(sensorPos);
     
     // scaling
@@ -104,7 +104,8 @@ void LensSimulator::simulate() {
             f64vec3 dir(-cos(light.angle), -sin(light.angle), 0);
             
             // check collision step by step
-            double step = -0.001;
+            double maxStep = -10;
+            double step = maxStep;
             while (x > 0) {
                 f64vec3 current, next;
                 current.x = x;
@@ -117,47 +118,61 @@ void LensSimulator::simulate() {
                 double currentH = sqrt(current.y * current.y + current.z * current.z);
                 double nextH = sqrt(next.y * next.y + next.z * next.z);
                 
+                bool collision = false;
                 for (auto lens : lensElements) {
                     for (auto curve : {lens.front, lens.back}) {
                         
-                        bool collision = lens.diametor/2 > currentH
+                        collision = lens.diametor/2 > currentH
                         && lens.position + curve.getX(currentH) < current.x
                         && lens.position + curve.getX(nextH) >= next.x;
                         
                         if (collision) {
-                            f64vec3 hit;
-                            // TODO: calc more accuracy position
-                            hit.x = (current.x + next.x) / 2;
-                            hit.y = (current.y + next.y) / 2;
-                            hit.z = (current.z + next.z) / 2;
-                            line.p.push_back(hit);
-                            pastAnchor = hit;
-                            
-                            // calc next direction
-                            auto normal = curve.getNormal(hit.y, hit.z);
-                            double nd;
-                            if (curve.isFront) {
-                                nd = 1. / lens.n;
-                            }else{
-                                nd = lens.n / 1.;
-                            }
-                            double inAngle = glm::angle(normal, dir);
-                            double outAngle = asin(nd * sin(inAngle));
-                            cout << outAngle << endl;
-                            // no angle, same direction
-                            if (inAngle == 0) {
-                                dir = normal;
-                            } else if (inAngle == PI) {
-                                dir = -normal;
-                            }
-                            else {
-                                f64vec3 axis = cross(dir, normal);
-                                f64mat4 rotationMat(1);
-                                rotationMat = glm::rotate(rotationMat, outAngle, axis);
-                                dir = rotationMat * f64vec4(normal, 1);
+                            if (step > -0.000001) {
+                                
+                                f64vec3 hit;
+                                // TODO: calc more accuracy position
+                                hit.x = (current.x + next.x) / 2;
+                                hit.y = (current.y + next.y) / 2;
+                                hit.z = (current.z + next.z) / 2;
+                                line.p.push_back(hit);
+                                pastAnchor = hit;
+                                
+                                // calc next direction
+                                auto normal = curve.getNormal(hit.y, hit.z);
+                                double nd;
+                                if (curve.isFront) {
+                                    nd = 1. / lens.n;
+                                }else{
+                                    nd = lens.n / 1.;
+                                }
+                                double inAngle = glm::angle(normal, dir);
+                                double outAngle = asin(nd * sin(inAngle));
+                                cout << outAngle << endl;
+                                // no angle, same direction
+                                if (inAngle == 0) {
+                                    dir = normal;
+                                } else if (inAngle == PI) {
+                                    dir = -normal;
+                                }
+                                else {
+                                    f64vec3 axis = cross(dir, normal);
+                                    f64mat4 rotationMat(1);
+                                    rotationMat = glm::rotate(rotationMat, outAngle, axis);
+                                    dir = rotationMat * f64vec4(normal, 1);
+                                }
+
+                                x += step;
+                                step = maxStep;
+                            } else {
+                                step /= 10;
                             }
                         }
+                        if (collision) break;
                     }
+                    if (collision) break;
+                }
+                
+                if (!collision) {
                     x += step;
                 }
                 
