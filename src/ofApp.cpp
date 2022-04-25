@@ -8,6 +8,9 @@ void ofApp::setup(){
     componentManager->addChild(make_shared<LensSimulator>());
 
     componentManager->onSetup();
+    
+    ofSetBackgroundAuto(true);
+    ofSetBackgroundColor(0);
 }
 
 //--------------------------------------------------------------

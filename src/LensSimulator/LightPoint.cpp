@@ -1,6 +1,6 @@
 #include "LightPoint.h"
 
-LightLine::LightLine(highp_dvec3 _firstPos) {
+LightLine::LightLine(f64vec3 _firstPos) {
     p.clear();
     p.push_back(_firstPos);
 }
@@ -8,7 +8,7 @@ LightLine::LightLine(highp_dvec3 _firstPos) {
 void LightLine::draw() {
     ofNoFill();
     
-    if (isValid) ofSetColor(200);
+    if (isValid) ofSetColor(100);
     else ofSetColor(100, 0, 0);
     
     ofBeginShape();
@@ -17,9 +17,10 @@ void LightLine::draw() {
     }
     ofEndShape();
     
-    for (auto &v : p) {
-        ofDrawCircle(ofVec3f(v.x, v.y, v.z), 1);
-    }
+    // show angle point
+//    for (auto &v : p) {
+//        ofDrawCircle(ofVec3f(v.x, v.y, v.z), 1);
+//    }
 }
 
 LightPoint::LightPoint(double _angle):
@@ -41,7 +42,7 @@ void LightPoint::clear() {
     lines.clear();
     simulated = false;
     sigma = 0;
-    average = highp_dvec3(0);
+    average = f64vec3(0);
     startPos = 0;
     startHeight = 0;
 }
@@ -56,19 +57,26 @@ void LightPoint::setStart(double _pos, double _height) {
     double x = _pos;
     for (int i=0; i<resolution; ++i) {
         double y = startHeight * (2. * i / (resolution - 1) - 1);
-//        for (int j=0; j<resolution; ++j) {
-//            double z = startHeight * (2. * j / (resolution - 1) - 1);
-        double z = 0;
-            highp_dvec3 firstPos(x, y, z);
+        
+        bool is2Dsimulation = true;
+        if (is2Dsimulation) {
+            double z = 0;
+            f64vec3 firstPos(x, y, z);
             lines.push_back(LightLine(firstPos));
-//        }
+        } else {
+            for (int j=0; j<resolution; ++j) {
+                double z = startHeight * (2. * j / (resolution - 1) - 1);
+                f64vec3 firstPos(x, y, z);
+                lines.push_back(LightLine(firstPos));
+            }
+        }
     }
 }
 
 void LightPoint::calcStatistics() {
     int count = 0;
     sigma = 0;
-    average = highp_dvec3(0);
+    average = f64vec3(0);
     for (auto &line: lines) {
         if(!line.isValid) continue;
         count++;

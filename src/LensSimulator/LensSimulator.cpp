@@ -8,9 +8,11 @@ void LensSimulator::onStart() {
     setHeight(500);
 
     // set a lens
+    /*
+     // spherical lens
     lensElements.push_back(LensElement());
-    auto &l = lensElements[0];
-    l.position = 60;
+    auto &l = lensElements.back();
+    l.position = 62;
     l.diametor = 40;
     l.front.r = 60;
     l.front.offset = 5;
@@ -18,7 +20,22 @@ void LensSimulator::onStart() {
     l.back.offset = -5;
     l.n = 1.492659; // acryl
     l.abbe = 57.98; // acryl
+*/
     
+    // non spherical lens
+    lensElements.push_back(LensElement());
+    auto &l = lensElements.back();
+    l.position = 62;
+    l.diametor = 40;
+    l.front.isSpherical = false;
+    l.front.offset = 7;
+    l.front.a.push_back(-0.017);
+    l.back.isSpherical = false;
+    l.back.offset = -7;
+    l.back.a.push_back(0.017);
+    l.n = 1.492659; // acryl
+    l.abbe = 57.98; // acryl
+
     // set light point
     lightPoints.push_back(LightPoint(0));
     
@@ -78,49 +95,70 @@ void LensSimulator::simulate() {
     double lightStartPos = 100;
     for (auto &light : lightPoints) {
         light.clear();
-        light.setStart(100, 50);
+        light.setStart(100, 30);
         
         // exec simulation
         for (auto &line : light.lines) {
-            highp_dvec3 pastAnchor = line.p[0];
+            f64vec3 pastAnchor = line.p[0];
             double x = pastAnchor.x;
-            highp_dvec3 dir(-cos(light.angle), -sin(light.angle), 0);
+            f64vec3 dir(-cos(light.angle), -sin(light.angle), 0);
             
+            // check collision step by step
+            double step = -0.001;
             while (x > 0) {
-                double dx = -1;
-                x += dx;
-                highp_dvec3 current, next;
+                f64vec3 current, next;
                 current.x = x;
                 current.y = pastAnchor.y + (x - pastAnchor.x) * dir.y / dir.x;
                 current.z = pastAnchor.z + (x - pastAnchor.x) * dir.z / dir.x;
-                next.x = x + dx;
+                next.x = x + step;
                 next.y = pastAnchor.y + (next.x - pastAnchor.x) * dir.y / dir.x;
                 next.z = pastAnchor.z + (next.x - pastAnchor.x) * dir.z / dir.x;
                 
-                double currentR = sqrt(current.y * current.y + current.z * current.z);
-                double nextR = sqrt(next.y * next.y + next.z * next.z);
-
+                double currentH = sqrt(current.y * current.y + current.z * current.z);
+                double nextH = sqrt(next.y * next.y + next.z * next.z);
+                
                 for (auto lens : lensElements) {
                     for (auto curve : {lens.front, lens.back}) {
-                        if (lens.diametor/2 > currentR
-                            && lens.position + curve.getX(currentR) < current.x
-                            && lens.position + curve.getX(nextR) >= next.x) {
-                            
-                            highp_dvec3 hit;
+                        
+                        bool collision = lens.diametor/2 > currentH
+                        && lens.position + curve.getX(currentH) < current.x
+                        && lens.position + curve.getX(nextH) >= next.x;
+                        
+                        if (collision) {
+                            f64vec3 hit;
                             // TODO: calc more accuracy position
                             hit.x = (current.x + next.x) / 2;
                             hit.y = (current.y + next.y) / 2;
                             hit.z = (current.z + next.z) / 2;
                             line.p.push_back(hit);
-                            pastAnchor - hit;
+                            pastAnchor = hit;
                             
                             // calc next direction
                             auto normal = curve.getNormal(hit.y, hit.z);
-                            if (glm::dot(normal, dir) > 0) {
+                            double nd;
+                            if (curve.isFront) {
+                                nd = 1. / lens.n;
+                            }else{
+                                nd = lens.n / 1.;
+                            }
+                            double inAngle = glm::angle(normal, dir);
+                            double outAngle = asin(nd * sin(inAngle));
+                            cout << outAngle << endl;
+                            // no angle, same direction
+                            if (inAngle == 0) {
                                 dir = normal;
+                            } else if (inAngle == PI) {
+                                dir = -normal;
+                            }
+                            else {
+                                f64vec3 axis = cross(dir, normal);
+                                f64mat4 rotationMat(1);
+                                rotationMat = glm::rotate(rotationMat, outAngle, axis);
+                                dir = rotationMat * f64vec4(normal, 1);
                             }
                         }
                     }
+                    x += step;
                 }
                 
                 if (next.x < 0) {

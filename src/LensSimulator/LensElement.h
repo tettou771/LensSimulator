@@ -16,8 +16,8 @@ public:
         double r = 0; // spherical radius
         vector<double> a; // polynomial parametors [0]:^2 [1]:^4 ...
         double getX(double h);
-        double getDX(double h);
-        highp_dvec3 getNormal(double y, double z);
+        double getDH(double h);
+        f64vec3 getNormal(double y, double z);
     };
 
     double position; // position from sensor

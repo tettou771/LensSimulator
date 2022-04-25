@@ -5,13 +5,13 @@ using namespace glm;
 
 class LightLine {
 public:
-    LightLine(highp_dvec3 _firstPos);
+    LightLine(f64vec3 _firstPos);
     
     void draw();
     
-    vector<highp_dvec3> p;
+    vector<f64vec3> p;
     bool isValid = false;
-    highp_dvec3 screenPos;
+    f64vec3 screenPos;
 };
 
 class LightPoint {
@@ -28,7 +28,7 @@ public:
     
     bool simulated;
     double sigma;
-    highp_dvec3 average;
+    f64vec3 average;
     
     double startPos;
     double startHeight;
