@@ -10,38 +10,55 @@ void LensSimulator::onStart() {
     // set a lens
     topScoreUnit.elements.push_back(LensElement());
     auto &l = topScoreUnit.elements.back();
+    l.position = 50;
+    l.diametor = 20;
 
+//#define Spherical
+#define SemiSpherical
     
-    /*
+#ifdef Spherical
     // spherical lens
-    l.position = 62;
-    l.diametor = 40;
-    l.front.r = 60;
+    l.front.r = l.position;
     l.front.offset = 5;
-    l.back.r = -60;
+    l.back.r = -l.position;
     l.back.offset = -5;
-*/
-    // non spherical lens
-    l.position = 60;
-    l.diametor = 40;
-    l.front.isSpherical = false;
-    l.front.offset = 7;
-    l.front.a.push_back(-0.015);
-    l.front.a.push_back(0.0);
-    l.front.a.push_back(0.0);
+#elif defined SemiSpherical
+    // semi spherical lens
+    l.front.r = l.position;
+    l.front.offset = 5;
     l.back.isSpherical = false;
-    l.back.offset = -7;
+    l.back.offset = -5;
     l.back.a.push_back(0.015);
     l.back.a.push_back(0.0);
     l.back.a.push_back(0.0);
+    l.back.a.push_back(0.0);
+#else
+    // non spherical lens
+    l.front.isSpherical = false;
+    l.front.offset = 5;
+    l.front.a.push_back(-0.015);
+    l.front.a.push_back(0.0);
+    l.front.a.push_back(0.0);
+    l.front.a.push_back(0.0);
+    l.back.isSpherical = false;
+    l.back.offset = -5;
+    l.back.a.push_back(0.015);
+    l.back.a.push_back(0.0);
+    l.back.a.push_back(0.0);
+    l.back.a.push_back(0.0);
+#endif
  
     l.n = 1.492659; // acryl
     l.abbe = 57.98; // acryl
 
     // set light point
-    lightPoints.push_back(LightPoint(0, 0));
-    lightPoints.push_back(LightPoint(0.17, 10));
-    lightPoints.push_back(LightPoint(0.3, 20));
+    double targetF = l.position; // focul length
+    double targetH = 0;
+    lightPoints.push_back(LightPoint(atan(targetH/targetF), targetH));
+    targetH = 10;
+    lightPoints.push_back(LightPoint(atan(targetH/targetF), targetH));
+    targetH = 20;
+    lightPoints.push_back(LightPoint(atan(targetH/targetF), targetH));
     
     // exec
     simulate(topScoreUnit);
@@ -62,11 +79,11 @@ void LensSimulator::onDraw() {
     ofPushMatrix();
 
     // sensor pos
-    ofVec2f sensorPos = ofVec2f(200, getHeight() / 2 + 0.5);
+    ofVec2f sensorPos = ofVec2f(250, getHeight() / 2 + 0.5);
     ofTranslate(sensorPos);
     
     // scaling
-    ofScale(5);
+    ofScale(7);
     
     // sensor
     ofSetColor(0, 100, 200);
@@ -85,6 +102,7 @@ void LensSimulator::onDraw() {
     }
     
     // spot
+    ofSetColor(50);
     ofTranslate(-10, 0);
     for (auto &light : lightPoints) {
         light.drawScreenSpot();
@@ -93,6 +111,7 @@ void LensSimulator::onDraw() {
     
     // score
     stringstream ss;
+    ss << "randomness " << randomness << endl;
     ss << "score " << topScoreUnit.score << endl;
     for (auto &lp : lightPoints) {
         ss << "average " << lp.average << endl;
@@ -116,6 +135,9 @@ void LensSimulator::onKeyPressed(ofKeyEventArgs& key) {
         simulate(topScoreUnit);
         randomness *= 0.5;
     }
+    else if (key.key == 'r') {
+        randomness = 1;
+    }
 }
 
 LensUnit LensSimulator::makeRandomLens(const LensUnit &reference, double rand) {
@@ -124,30 +146,32 @@ LensUnit LensSimulator::makeRandomLens(const LensUnit &reference, double rand) {
     randomUnit = topScoreUnit;
 
     auto &l = randomUnit.elements[0];
-    l.position += ofRandom(-10, 10) * rand;
-    
-    l.front.offset += ofRandom(-1, 1) * rand;
-    l.back.offset += ofRandom(-1, 1) * rand;
+    if (ofRandom(1) < 0.2) l.position += ofRandom(-10, 10) * rand;
+    if (ofRandom(1) < 0.2) l.front.offset += ofRandom(-1, 1) * rand;
+    if (ofRandom(1) < 0.2) l.back.offset += ofRandom(-1, 1) * rand;
 
-    l.front.r += ofRandom(-6, 6) * rand;
-    l.back.r += ofRandom(-6, 6) * rand;
+#ifdef Spherical
+    if (ofRandom(1) < 0.2) l.front.r += ofRandom(-6, 6) * rand;
+    if (ofRandom(1) < 0.2) l.back.r += ofRandom(-6, 6) * rand;
+#elif defined SemiSpherical
+    double provability = 1. / 5;
+    if (ofRandom(1) < provability) l.front.r += ofRandom(-6, 6) * rand;
+    if (ofRandom(1) < provability) l.back.a[0] += ofRandom(-0.1, 0.1) * rand;
+    if (ofRandom(1) < provability) l.back.a[1] += ofRandom(-0.1, 0.1) * rand;
+    if (ofRandom(1) < provability) l.back.a[2] += ofRandom(-0.1, 0.1) * rand;
+    if (ofRandom(1) < provability) l.back.a[3] += ofRandom(-0.1, 0.1) * rand;
+#else
+    double provability = 1. / 8;
+    if (ofRandom(1) < provability) l.front.a[0] += ofRandom(-0.1, 0.1) * rand;
+    if (ofRandom(1) < provability) l.front.a[1] += ofRandom(-0.1, 0.1) * rand;
+    if (ofRandom(1) < provability) l.front.a[2] += ofRandom(-0.1, 0.1) * rand;
+    if (ofRandom(1) < provability) l.front.a[3] += ofRandom(-0.1, 0.1) * rand;
+    if (ofRandom(1) < provability) l.back.a[0] += ofRandom(-0.1, 0.1) * rand;
+    if (ofRandom(1) < provability) l.back.a[1] += ofRandom(-0.1, 0.1) * rand;
+    if (ofRandom(1) < provability) l.back.a[2] += ofRandom(-0.1, 0.1) * rand;
+    if (ofRandom(1) < provability) l.back.a[3] += ofRandom(-0.1, 0.1) * rand;
+#endif
     
-
-    /*
-    for (auto &curve : {l.front, l.back}) {
-        for (auto &aParam : curve.a) {
-            aParam += ofRandom(-0.1, 0.1) * rand;
-        }
-    }
-     */
-    
-    l.front.a[0] += ofRandom(-0.1, 0.1) * rand;
-    l.front.a[1] += ofRandom(-0.1, 0.1) * rand;
-    l.front.a[2] += ofRandom(-0.1, 0.1) * rand;
-    l.back.a[0] += ofRandom(-0.1, 0.1) * rand;
-    l.back.a[1] += ofRandom(-0.1, 0.1) * rand;
-    l.back.a[2] += ofRandom(-0.1, 0.1) * rand;
-
     return randomUnit;
 }
 

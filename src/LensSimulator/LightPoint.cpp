@@ -72,7 +72,7 @@ void LightPoint::setStart(double _pos, double _height) {
     
     lines.clear();
     
-    int resolution = 13;
+    int resolution = 31;
     double x = _pos;
     for (int i=0; i<resolution; ++i) {
         double y = startHeight * (2. * i / (resolution - 1) - 1);
@@ -98,6 +98,9 @@ void LightPoint::calcStatistics() {
     average = f64vec3(0);
     for (auto &line: lines) {
         if(!line.isValid) continue;
+        if (isnan(line.screenPos.x)) continue;
+        if (isnan(line.screenPos.y)) continue;
+        if (isnan(line.screenPos.z)) continue;
         count++;
         average += line.screenPos;
     }
@@ -106,11 +109,14 @@ void LightPoint::calcStatistics() {
         average /= count;
     }
 
+    count = 0;
     for (auto &line: lines) {
         if(!line.isValid) continue;
-        count++;
         auto v = line.screenPos - average;
-        sigma += v.x * v.x + v.y * v.y;
+        double sgm = v.x * v.x + v.y * v.y;
+        if (isnan(sgm)) continue;
+        count++;
+        sigma += sgm;
     }
     if (count > 0) {
         sigma = sqrt(sigma) / count;
