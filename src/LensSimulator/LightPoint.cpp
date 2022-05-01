@@ -9,6 +9,7 @@ void LightLine::draw() {
     ofNoFill();
     
     if (isValid) ofSetColor(100);
+    //else return;
     else ofSetColor(100, 0, 0);
     
     ofBeginShape();
@@ -113,7 +114,7 @@ void LightPoint::calcStatistics() {
     for (auto &line: lines) {
         if(!line.isValid) continue;
         auto v = line.screenPos - average;
-        double sgm = v.x * v.x + v.y * v.y;
+        double sgm = v.y * v.y + v.z * v.z;
         if (isnan(sgm)) continue;
         count++;
         sigma += sgm;
@@ -124,6 +125,8 @@ void LightPoint::calcStatistics() {
     
     ofLog() << "ave: " << average;
     ofLog() << "sigma: " << sigma;
+    
+    validCount = count;
     
     simulated = true;
 }

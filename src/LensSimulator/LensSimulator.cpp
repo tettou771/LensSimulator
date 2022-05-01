@@ -7,14 +7,19 @@ void LensSimulator::onStart() {
     setWidth(1000);
     setHeight(500);
 
+    // target lens spec
+    double targetFocalLength = 50;
+    
     // set a lens
     topScoreUnit.elements.push_back(LensElement());
     auto &l = topScoreUnit.elements.back();
-    l.position = 50;
+    l.position = targetFocalLength + 10;
     l.diametor = 20;
 
+
 //#define Spherical
-#define SemiSpherical
+#define MultiSpherical
+//#define SemiSpherical
     
 #ifdef Spherical
     // spherical lens
@@ -22,6 +27,22 @@ void LensSimulator::onStart() {
     l.front.offset = 5;
     l.back.r = -l.position;
     l.back.offset = -5;
+#elif defined MultiSpherical
+    // multi spheridcal lens
+    l.front.r = targetFocalLength * 0.7;
+    l.front.offset = 5;
+    l.back.r = -targetFocalLength * 0.7;
+    l.back.offset = -5;
+
+    topScoreUnit.elements.push_back(LensElement());
+    auto &l2 = topScoreUnit.elements.back();
+    l2.position = targetFocalLength - 10;
+    l2.diametor = l.diametor;
+    l2.front.r = -targetFocalLength * 2;
+    l2.front.offset = 2;
+    l2.back.r = targetFocalLength * 2;
+    l2.back.offset = -2;
+
 #elif defined SemiSpherical
     // semi spherical lens
     l.front.r = l.position;
@@ -48,18 +69,22 @@ void LensSimulator::onStart() {
     l.back.a.push_back(0.0);
 #endif
  
-    l.n = 1.492659; // acryl
-    l.abbe = 57.98; // acryl
+    for (auto &l : topScoreUnit.elements) {
+        l.n = 1.492659; // acryl
+        l.abbe = 57.98; // acryl
+    }
 
     // set light point
-    double targetF = l.position; // focul length
+    double targetF = targetFocalLength; // focul length
     double targetH = 0;
     lightPoints.push_back(LightPoint(atan(targetH/targetF), targetH));
-    targetH = 10;
+    targetH = 3;
     lightPoints.push_back(LightPoint(atan(targetH/targetF), targetH));
-    targetH = 20;
+    targetH = 6;
     lightPoints.push_back(LightPoint(atan(targetH/targetF), targetH));
-    
+    targetH = 15;
+    lightPoints.push_back(LightPoint(atan(targetH/targetF), targetH));
+
     // exec
     simulate(topScoreUnit);
     
@@ -79,7 +104,7 @@ void LensSimulator::onDraw() {
     ofPushMatrix();
 
     // sensor pos
-    ofVec2f sensorPos = ofVec2f(250, getHeight() / 2 + 0.5);
+    ofVec2f sensorPos = ofVec2f(350 + 0.5, getHeight() / 2 + 0.5);
     ofTranslate(sensorPos);
     
     // scaling
@@ -117,6 +142,28 @@ void LensSimulator::onDraw() {
         ss << "average " << lp.average << endl;
         ss << "sigma " << lp.sigma << endl;
     }
+    ss << endl;
+    int lensIndex = 0;
+    for (auto &lens : topScoreUnit.elements) {
+        ss << "ID " << lensIndex << endl;
+        ss << " Dia:" << lens.diametor << " Pos:" << lens.position << endl;
+        
+        for (auto &curve : {lens.front, lens.back}) {
+            ss << (curve.isFront ? "Front " : "Back ");
+            if (curve.isSpherical) {
+                ss << "is Spherical" << endl;
+                ss << "r:" << curve.r;
+                ss << " offset:" << curve.offset << endl;
+            }else{
+                ss << "is NotSpherical" << endl;
+                for (auto &a : curve.a) {
+                    ss << a << " ";
+                }
+                ss << endl;
+            }
+        }
+        ++lensIndex;
+    }
     ofDrawBitmapString(ss.str(), 20, 20);
 }
 
@@ -145,32 +192,58 @@ LensUnit LensSimulator::makeRandomLens(const LensUnit &reference, double rand) {
     LensUnit randomUnit;
     randomUnit = topScoreUnit;
 
-    auto &l = randomUnit.elements[0];
-    if (ofRandom(1) < 0.2) l.position += ofRandom(-10, 10) * rand;
-    if (ofRandom(1) < 0.2) l.front.offset += ofRandom(-1, 1) * rand;
-    if (ofRandom(1) < 0.2) l.back.offset += ofRandom(-1, 1) * rand;
-
+    bool isValidElements = true;
+    do {
+        isValidElements = true;
+        
+        auto &l = randomUnit.elements[0];
+        if (ofRandom(1) < 0.2) l.position += ofRandom(-10, 10) * rand;
+        if (ofRandom(1) < 0.2) l.front.offset += ofRandom(-1, 1) * rand;
+        if (ofRandom(1) < 0.2) l.back.offset += ofRandom(-1, 1) * rand;
+        
 #ifdef Spherical
-    if (ofRandom(1) < 0.2) l.front.r += ofRandom(-6, 6) * rand;
-    if (ofRandom(1) < 0.2) l.back.r += ofRandom(-6, 6) * rand;
+        if (ofRandom(1) < 0.2) l.front.r += ofRandom(-6, 6) * rand;
+        if (ofRandom(1) < 0.2) l.back.r += ofRandom(-6, 6) * rand;
+#elif defined MultiSpherical
+        if (ofRandom(1) < 0.5) {
+            l.front.r += ofRandom(-10, 10) * rand;
+            l.back.r = l.front.r;
+        }
+        
+        auto &l2 = randomUnit.elements[1];
+        if (ofRandom(1) < 0.5) l2.position += ofRandom(-10, 10) * rand;
+//        if (ofRandom(1) < 0.3) l2.front.offset += ofRandom(-1, 1) * rand;
+//        if (ofRandom(1) < 0.3) l2.back.offset += ofRandom(-1, 1) * rand;
+//        if (ofRandom(1) < 0.3) l2.front.r += ofRandom(-6, 6) * rand;
+//        if (ofRandom(1) < 0.3) l2.back.r += ofRandom(-6, 6) * rand;
+        if (ofRandom(1) < 0.5) {
+            l2.front.r += ofRandom(-10, 10) * rand;
+            l2.back.r = l2.front.r;
+        }
+
+        if (abs(l.position - l2.position) < abs(l2.front.offset) + abs(l.back.offset)) {
+            isValidElements = false;
+        }
+        
 #elif defined SemiSpherical
-    double provability = 1. / 5;
-    if (ofRandom(1) < provability) l.front.r += ofRandom(-6, 6) * rand;
-    if (ofRandom(1) < provability) l.back.a[0] += ofRandom(-0.1, 0.1) * rand;
-    if (ofRandom(1) < provability) l.back.a[1] += ofRandom(-0.1, 0.1) * rand;
-    if (ofRandom(1) < provability) l.back.a[2] += ofRandom(-0.1, 0.1) * rand;
-    if (ofRandom(1) < provability) l.back.a[3] += ofRandom(-0.1, 0.1) * rand;
+        double provability = 1. / 5;
+        if (ofRandom(1) < provability) l.front.r += ofRandom(-6, 6) * rand;
+        if (ofRandom(1) < provability) l.back.a[0] += ofRandom(-0.1, 0.1) * rand;
+        if (ofRandom(1) < provability) l.back.a[1] += ofRandom(-0.1, 0.1) * rand;
+        if (ofRandom(1) < provability) l.back.a[2] += ofRandom(-0.1, 0.1) * rand;
+        if (ofRandom(1) < provability) l.back.a[3] += ofRandom(-0.1, 0.1) * rand;
 #else
-    double provability = 1. / 8;
-    if (ofRandom(1) < provability) l.front.a[0] += ofRandom(-0.1, 0.1) * rand;
-    if (ofRandom(1) < provability) l.front.a[1] += ofRandom(-0.1, 0.1) * rand;
-    if (ofRandom(1) < provability) l.front.a[2] += ofRandom(-0.1, 0.1) * rand;
-    if (ofRandom(1) < provability) l.front.a[3] += ofRandom(-0.1, 0.1) * rand;
-    if (ofRandom(1) < provability) l.back.a[0] += ofRandom(-0.1, 0.1) * rand;
-    if (ofRandom(1) < provability) l.back.a[1] += ofRandom(-0.1, 0.1) * rand;
-    if (ofRandom(1) < provability) l.back.a[2] += ofRandom(-0.1, 0.1) * rand;
-    if (ofRandom(1) < provability) l.back.a[3] += ofRandom(-0.1, 0.1) * rand;
+        double provability = 1. / 8;
+        if (ofRandom(1) < provability) l.front.a[0] += ofRandom(-0.1, 0.1) * rand;
+        if (ofRandom(1) < provability) l.front.a[1] += ofRandom(-0.1, 0.1) * rand;
+        if (ofRandom(1) < provability) l.front.a[2] += ofRandom(-0.1, 0.1) * rand;
+        if (ofRandom(1) < provability) l.front.a[3] += ofRandom(-0.1, 0.1) * rand;
+        if (ofRandom(1) < provability) l.back.a[0] += ofRandom(-0.1, 0.1) * rand;
+        if (ofRandom(1) < provability) l.back.a[1] += ofRandom(-0.1, 0.1) * rand;
+        if (ofRandom(1) < provability) l.back.a[2] += ofRandom(-0.1, 0.1) * rand;
+        if (ofRandom(1) < provability) l.back.a[3] += ofRandom(-0.1, 0.1) * rand;
 #endif
+    } while (!isValidElements);
     
     return randomUnit;
 }
@@ -216,6 +289,8 @@ void LensSimulator::simulate(LensUnit &lensUnit) {
                 double nextH = sqrt(next.y * next.y + next.z * next.z);
                 
                 bool collision = false;
+                bool hit = false;
+                //bool hit = false;
                 for (auto lens : lensElements) {
                     for (auto curve : {lens.front, lens.back}) {
                         
@@ -225,17 +300,18 @@ void LensSimulator::simulate(LensUnit &lensUnit) {
                         
                         if (collision) {
                             if (step > -0.000001) {
+                                hit = true;
                                 
-                                f64vec3 hit;
+                                f64vec3 hitPos;
                                 // TODO: calc more accuracy position
-                                hit.x = (current.x + next.x) / 2;
-                                hit.y = (current.y + next.y) / 2;
-                                hit.z = (current.z + next.z) / 2;
-                                line.p.push_back(hit);
-                                pastAnchor = hit;
+                                hitPos.x = (current.x + next.x) / 2;
+                                hitPos.y = (current.y + next.y) / 2;
+                                hitPos.z = (current.z + next.z) / 2;
+                                line.p.push_back(hitPos);
+                                pastAnchor = hitPos;
                                 
                                 // calc next direction
-                                auto normal = curve.getNormal(hit.y, hit.z);
+                                auto normal = curve.getNormal(hitPos.y, hitPos.z);
                                 double nd;
                                 if (curve.isFront) {
                                     nd = 1. / lens.n;
@@ -264,9 +340,9 @@ void LensSimulator::simulate(LensUnit &lensUnit) {
                                 step /= 10;
                             }
                         }
-                        if (collision) break;
+                        if (collision) break; // break curves
                     }
-                    if (collision) break;
+                    if (collision) break; // break lensElements
                 }
                 
                 if (!collision) {
@@ -274,32 +350,46 @@ void LensSimulator::simulate(LensUnit &lensUnit) {
                 }
                 
                 if (next.x < 0) {
-                    // is this hit a lens?
-                    if (line.p.size() == 1) line.isValid = false;
-                    else line.isValid = true;
+                    // is this hit all lens surface?
+                    if (line.p.size() == lensElements.size() * 2 + 1) line.isValid = true;
+                    else line.isValid = false;
                     
                     line.screenPos.x = 0;
                     line.screenPos.y = pastAnchor.y - pastAnchor.x * dir.y / dir.x;
                     line.screenPos.z = pastAnchor.z - pastAnchor.x * dir.z / dir.x;
                     line.p.push_back(line.screenPos);
-                    break;
+                    break; // break line
                 }
-            }
+            } // line
         }
         
         light.calcStatistics();
-        
-    }
+    } // light points
     
     // evaluation
     double posFactor = 0;
     double sigmaFactor = 0;
+    int i = 0;
+    bool noLineFocused = false;
+    
     for (auto light : lightPoints) {
+        if (light.validCount == 0) {
+            noLineFocused = true;
+            continue;
+        }
+        
+        //if (i == lightPoints.size() - 3) break;
         double pos = sqrt(light.average.y * light.average.y + light.average.z * light.average.z);
         posFactor += abs(pos - abs(light.target));
         sigmaFactor += light.sigma;
+        i++;
     }
-    posFactor /= lightPoints.size();
-    sigmaFactor /= lightPoints.size();
-    lensUnit.score = MIN(1./sigmaFactor, 1./ posFactor) + 1. / sigmaFactor;
+    posFactor /= lightPoints.size() - 1;
+    sigmaFactor /= lightPoints.size() - 1;
+    if (noLineFocused) lensUnit.score = 0;
+    else if (posFactor > 0 && sigmaFactor > 0) lensUnit.score = MIN(1./sigmaFactor, 1/ posFactor) * 0.00001 + 1. / sigmaFactor;
+    else lensUnit.score = 0;
+        
+    // igore inf
+    if (isnan(lensUnit.score)) lensUnit.score = 0;
 }

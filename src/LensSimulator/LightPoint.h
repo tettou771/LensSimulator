@@ -27,6 +27,7 @@ public:
     
     double angle; // light direction
     vector<LightLine> lines;
+    int validCount = 0;
     
     bool simulated;
     double sigma;
